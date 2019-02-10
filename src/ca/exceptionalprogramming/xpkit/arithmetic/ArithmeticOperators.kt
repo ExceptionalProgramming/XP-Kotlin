@@ -2,18 +2,28 @@ package ca.exceptionalprogramming.xpkit.arithmetic
 
 import ca.exceptionalprogramming.xpkit.core.ExceptionalAction
 import ca.exceptionalprogramming.xpkit.core.ValueException
+import ca.exceptionalprogramming.xpkit.core.throwResult
 
-operator fun ExceptionalAction.plus(other: ExceptionalAction) =
-    { reduceExceptionalActions(listOf(this, other), 0, Int::plus) }
+operator fun ExceptionalAction.plus(other: ExceptionalAction) = { executeOperation<Int>(this, other, Int::plus) }
+operator fun ExceptionalAction.minus(other: ExceptionalAction) = { executeOperation<Int>(this, other, Int::minus) }
+operator fun ExceptionalAction.times(other: ExceptionalAction) = { executeOperation<Int>(this, other, Int::times) }
+operator fun ExceptionalAction.div(other: ExceptionalAction) = { executeOperation<Int>(this, other, Int::div) }
 
-operator fun ExceptionalAction.minus(other: ExceptionalAction) =
-    { reduceExceptionalActions(listOf(this, other), 0, Int::minus) }
+fun <T : Any> executeOperation(lhs: ExceptionalAction, rhs: ExceptionalAction, operation: (T, T) -> T): Nothing {
+    val lhsResult = try {
+        lhs.throwResult()
+    } catch (valueException: ValueException) {
+        valueException.getAs<T>()
+    }
 
-operator fun ExceptionalAction.times(other: ExceptionalAction) =
-    { reduceExceptionalActions(listOf(this, other), 0, Int::times) }
+    val rhsResult = try {
+        rhs.throwResult()
+    } catch (valueException: ValueException) {
+        valueException.getAs<T>()
+    }
 
-operator fun ExceptionalAction.div(other: ExceptionalAction) =
-    { reduceExceptionalActions(listOf(this, other), 0, Int::div) }
+    throw ValueException(operation(lhsResult, rhsResult))
+}
 
 fun <T : Any> reduceExceptionalActions(actions: List<ExceptionalAction>, initialValue: T, reducer: (T, T) -> T): Nothing {
     var value = initialValue
